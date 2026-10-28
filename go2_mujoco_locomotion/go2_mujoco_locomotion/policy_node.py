@@ -16,7 +16,7 @@ import numpy as np
 import rclpy
 import torch
 import yaml
-from geometry_msgs.msg import PoseStamped, TransformStamped, Twist
+from geometry_msgs.msg import TransformStamped, Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from sensor_msgs.msg import JointState, LaserScan
@@ -87,6 +87,8 @@ class MujocoPolicyNode(Node):
         self.declare_parameter("publish_joint_states", True)
         self.declare_parameter("cmd_timeout", 0.6)
         self.declare_parameter("max_vx", 1.50)
+        # Negative so Nav2's BackUp recovery is not silently clamped to zero.
+        self.declare_parameter("min_vx", -0.30)
         self.declare_parameter("max_vy", 0.18)
         self.declare_parameter("max_wz", 0.50)
         self.declare_parameter("smoothing", 0.30)
@@ -94,12 +96,15 @@ class MujocoPolicyNode(Node):
         self.declare_parameter("enable_viewer", False)
         self.declare_parameter("hold_when_zero", True)
         self.declare_parameter("hold_delay", 0.8)
-        self.declare_parameter("goal_topic", "/goal_pose")
-        self.declare_parameter("goal_stop_radius", 0.35)
+        # Scan plane height in the world frame, capped so it stays below the
+        # 0.6 m maze walls while the body is on the steps/ramp.
+        self.declare_parameter("scan_height_offset", 0.18)
+        self.declare_parameter("scan_max_height", 0.50)
 
         self.cfg = load_yaml(Path(self.get_parameter("config_path").value))
         self.cmd_timeout = float(self.get_parameter("cmd_timeout").value)
         self.max_vx = float(self.get_parameter("max_vx").value)
+        self.min_vx = float(self.get_parameter("min_vx").value)
         self.max_vy = float(self.get_parameter("max_vy").value)
         self.max_wz = float(self.get_parameter("max_wz").value)
         self.alpha = float(self.get_parameter("smoothing").value)
@@ -113,12 +118,20 @@ class MujocoPolicyNode(Node):
         self.enable_viewer = bool(self.get_parameter("enable_viewer").value)
         self.hold_when_zero = bool(self.get_parameter("hold_when_zero").value)
         self.hold_delay = float(self.get_parameter("hold_delay").value)
+        self.scan_height_offset = float(self.get_parameter("scan_height_offset").value)
+        self.scan_max_height = float(self.get_parameter("scan_max_height").value)
         self.zero_since = None
-        self.goal_xy = None
-        self.goal_hold = False
+        self.holding = False
 
         self.model = mujoco.MjModel.from_xml_path(str(self.get_parameter("xml_path").value))
-        self.model.opt.timestep = 0.005
+        # Match the simulator settings the policy was trained/deployed with.
+        self.model.opt.timestep = float(self.cfg["simulation_dt"])
+        self.model.opt.integrator = getattr(
+            mujoco.mjtIntegrator, "mjINT_" + str(self.cfg["integrator"]).upper()
+        )
+        self.model.opt.solver = getattr(mujoco.mjtSolver, "mjSOL_" + str(self.cfg["solver"]).upper())
+        self.model.opt.iterations = int(self.cfg["solver_iterations"])
+        self.model.opt.ls_iterations = int(self.cfg["line_search_iterations"])
         self.data = mujoco.MjData(self.model)
         mujoco.mj_resetData(self.model, self.data)
 
@@ -163,7 +176,6 @@ class MujocoPolicyNode(Node):
         self.base_body = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "base")
 
         self.create_subscription(Twist, str(self.get_parameter("cmd_topic").value), self.on_cmd, 10)
-        self.create_subscription(PoseStamped, str(self.get_parameter("goal_topic").value), self.on_goal, 10)
         self.odom_pub = self.create_publisher(Odometry, self.odom_topic, 20)
         self.scan_pub = self.create_publisher(LaserScan, self.scan_topic, 10)
         self.joint_pub = self.create_publisher(JointState, "joint_states", 10)
@@ -188,11 +200,6 @@ class MujocoPolicyNode(Node):
             f"cmd={self.get_parameter('cmd_topic').value} dt={self.control_dt:.3f}s"
         )
 
-    def on_goal(self, msg: PoseStamped):
-        self.goal_xy = np.array([msg.pose.position.x, msg.pose.position.y], dtype=np.float32)
-        self.goal_hold = False
-        self.get_logger().info(f"goal target ({self.goal_xy[0]:.2f}, {self.goal_xy[1]:.2f})")
-
     def on_cmd(self, msg: Twist):
         self.command_raw[:] = [msg.linear.x, msg.linear.y, msg.angular.z]
         self.last_cmd_time = time.monotonic()
@@ -202,7 +209,7 @@ class MujocoPolicyNode(Node):
             target = np.zeros(3, dtype=np.float32)
         else:
             target = self.command_raw.copy()
-        target[0] = np.clip(target[0], 0.0, self.max_vx)
+        target[0] = np.clip(target[0], self.min_vx, self.max_vx)
         target[1] = np.clip(target[1], -self.max_vy, self.max_vy)
         target[2] = np.clip(target[2], -self.max_wz, self.max_wz)
         self.command += self.alpha * (target - self.command)
@@ -210,22 +217,12 @@ class MujocoPolicyNode(Node):
 
     def _control(self):
         cmd = self._clip_command()
-        if self.goal_xy is not None and not self.goal_hold:
-            qxy = self.data.qpos[0:2] - self.start_xy
-            if float(np.linalg.norm(qxy - self.goal_xy)) < float(self.get_parameter("goal_stop_radius").value):
-                self.goal_hold = True
-                self.get_logger().info("goal reached; holding default stance")
-        if self.goal_hold:
-            self.action[:] = 0.0
-            target_mujoco = self.default_mujoco
-            tau = (target_mujoco - self.data.qpos[self.qpos_ids]) * self.kp - self.data.qvel[self.qvel_ids] * self.kd
-            self.data.ctrl[self.act_ids] = tau
-            return
         if self.hold_when_zero and np.linalg.norm(cmd[:2]) < 0.02 and abs(cmd[2]) < 0.05:
             if self.zero_since is None:
                 self.zero_since = time.monotonic()
             if time.monotonic() - self.zero_since >= self.hold_delay:
                 # Explicit zero-command stance: do not let the policy drift while idle.
+                self.holding = True
                 self.action[:] = 0.0
                 target_mujoco = self.default_mujoco
                 tau = (target_mujoco - self.data.qpos[self.qpos_ids]) * self.kp - self.data.qvel[self.qvel_ids] * self.kd
@@ -233,8 +230,11 @@ class MujocoPolicyNode(Node):
                 return
         else:
             self.zero_since = None
-        self.goal_xy = None
-        self.goal_hold = False
+        if self.holding:
+            # The observation history is stale after standing still; start fresh.
+            self.holding = False
+            if hasattr(self.policy, "reset"):
+                self.policy.reset()
         q = self.data.qpos[self.qpos_ids][self.mujoco_from_policy]
         qd = self.data.qvel[self.qvel_ids][self.mujoco_from_policy]
         self.obs[0:3] = self.data.qvel[3:6] * self.ang_scale
@@ -308,7 +308,7 @@ class MujocoPolicyNode(Node):
             scan.angle_increment = 2.0 * math.pi / n
             scan.range_min = 0.15
             scan.range_max = 6.0
-            pnt = np.array([q[0], q[1], q[2] + 0.18], dtype=np.float64)
+            pnt = np.array([q[0], q[1], min(q[2] + self.scan_height_offset, self.scan_max_height)], dtype=np.float64)
             group = np.ones(6, dtype=np.uint8)
             ranges = []
             for i in range(n):

@@ -24,7 +24,7 @@ setup(
     maintainer="Go2 terrain team",
     maintainer_email="maintainer@example.com",
     description="Unitree Go2 MuJoCo locomotion and terrain navigation demo",
-    license="BSD-3-Clause",
+    license="Apache-2.0",
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [

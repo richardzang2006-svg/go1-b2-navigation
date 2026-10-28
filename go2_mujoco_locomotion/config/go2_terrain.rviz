@@ -46,20 +46,6 @@ Visualization Manager:
       Update Interval: 0
       Value: true
 
-    - Alpha: 1
-      Class: rviz_default_plugins/RobotModel
-      Collision Enabled: false
-      Description Source: Topic
-      Description Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /robot_description
-      Enabled: false
-      Name: RobotModel
-      Visual Enabled: true
-      Value: true
 
     - Alpha: 1
       Autocompute Intensity Bounds: true
@@ -164,22 +150,6 @@ Visualization Manager:
         Value: /plan
       Value: true
 
-    - Alpha: 1
-      Class: rviz_default_plugins/Pose
-      Color: 255; 255; 0
-      Enabled: true
-      Head Length: 0.2
-      Head Radius: 0.1
-      Name: MissionTarget
-      Shaft Length: 0.4
-      Shaft Radius: 0.05
-      Topic:
-        Depth: 1
-        Durability Policy: Transient Local
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /mission/target
-      Value: true
 
   Enabled: true
   Global Options:

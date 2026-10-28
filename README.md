@@ -184,7 +184,7 @@ colcon build --packages-select go2_mujoco_locomotion
 ros2 launch go2_mujoco_locomotion go2_terrain.launch.py
 ```
 
-包含 0.06 m/0.14 m 台阶、低斜坡、对应可通行地图和 45 维本体感受策略。
+包含 0.06 m、0.10 m 两级台阶，以及从 0.14 m 高处向下的约 8° 斜坡，另有对应的可通行地图和 45 维本体感受策略。
 详细说明见 [go2_mujoco_locomotion/README.md](go2_mujoco_locomotion/README.md)，
 验证记录见 [docs/evidence/go2_terrain_navigation.txt](docs/evidence/go2_terrain_navigation.txt)。
 

@@ -1,18 +1,7 @@
-# MuJoCo deployment settings for the Go2 body-frame velocity policies.
+# MuJoCo deployment settings for the Go2 body-frame velocity policy, read by
+# policy_node. The policy, world and map paths are ROS parameters (see the launch file).
 
-# Supply the exported TorchScript policy with --policy, or set a repository-relative path here.
-policy_path: "deploy/deploy_mujoco/exported/mixed1.3.2resume_82.5k_0.6929.pt"
-
-# Available terrains: flat, stairs, cross_slope, cross_stairs, race_track.
-terrain: flat
-terrains:
-  flat: flat.xml
-  stairs: stairs.xml
-  cross_slope: cross_slope.xml
-  cross_stairs: cross_stairs.xml
-  race_track: race_track.xml
-
-simulation_duration: 600.0
+# Simulator settings applied to the loaded model; they must match training.
 simulation_dt: 0.005
 control_decimation: 4
 integrator: implicitfast
@@ -44,14 +33,6 @@ action_scale: 0.25
 action_clip: 100.0
 num_actions: 12
 num_obs: 45
-
-# Policy command: body-frame [vx, vy, yaw_rate] in [m/s, m/s, rad/s].
-# Scripted and joystick commands use the same direct velocity representation.
-command_kind: command/body/velocity
-command: [1.0, 0.0, 0.0]
-max_velocity_command: [2.0, 1.0, 3.0]
-joystick: true
-real_time: true
 
 mujoco_joint_names:
   - FL_hip_joint
