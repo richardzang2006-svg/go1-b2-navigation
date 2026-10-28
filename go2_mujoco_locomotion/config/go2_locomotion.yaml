@@ -1,0 +1,82 @@
+# MuJoCo deployment settings for the Go2 body-frame velocity policies.
+
+# Supply the exported TorchScript policy with --policy, or set a repository-relative path here.
+policy_path: "deploy/deploy_mujoco/exported/mixed1.3.2resume_82.5k_0.6929.pt"
+
+# Available terrains: flat, stairs, cross_slope, cross_stairs, race_track.
+terrain: flat
+terrains:
+  flat: flat.xml
+  stairs: stairs.xml
+  cross_slope: cross_slope.xml
+  cross_stairs: cross_stairs.xml
+  race_track: race_track.xml
+
+simulation_duration: 600.0
+simulation_dt: 0.005
+control_decimation: 4
+integrator: implicitfast
+solver: newton
+solver_iterations: 100
+line_search_iterations: 50
+
+# Position PD used by source/go2_rl_lab/go2_rl_lab/assets/go2.py.
+kps: [25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0]
+kds: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+
+# Go2HV torque-speed envelope used by the training actuator.
+motor:
+  use_torque_speed_curve: true
+  X1: 13.5
+  X2: 30.0
+  Y1: 20.2
+  Y2: 23.4
+
+default_angles: [0.1, 0.8, -1.5, -0.1, 0.8, -1.5, 0.1, 1.0, -1.5, -0.1, 1.0, -1.5]
+
+# One 45-dimensional frame is passed to policy.pt. The exported module maintains
+# the 10-frame observation history internally.
+ang_vel_scale: 0.25
+dof_pos_scale: 1.0
+dof_vel_scale: 0.05
+command_scale: [0.5, 1.0, 1.0]
+action_scale: 0.25
+action_clip: 100.0
+num_actions: 12
+num_obs: 45
+
+# Policy command: body-frame [vx, vy, yaw_rate] in [m/s, m/s, rad/s].
+# Scripted and joystick commands use the same direct velocity representation.
+command_kind: command/body/velocity
+command: [1.0, 0.0, 0.0]
+max_velocity_command: [2.0, 1.0, 3.0]
+joystick: true
+real_time: true
+
+mujoco_joint_names:
+  - FL_hip_joint
+  - FL_thigh_joint
+  - FL_calf_joint
+  - FR_hip_joint
+  - FR_thigh_joint
+  - FR_calf_joint
+  - RL_hip_joint
+  - RL_thigh_joint
+  - RL_calf_joint
+  - RR_hip_joint
+  - RR_thigh_joint
+  - RR_calf_joint
+
+policy_joint_names:
+  - FL_hip_joint
+  - FL_thigh_joint
+  - FL_calf_joint
+  - FR_hip_joint
+  - FR_thigh_joint
+  - FR_calf_joint
+  - RL_hip_joint
+  - RL_thigh_joint
+  - RL_calf_joint
+  - RR_hip_joint
+  - RR_thigh_joint
+  - RR_calf_joint

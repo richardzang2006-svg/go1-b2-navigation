@@ -1,0 +1,18 @@
+<mujoco model="go2 maze steps">
+  <include file="go2.xml"/>
+  <worldbody>
+    <geom name="floor" size="0 0 0.05" type="plane"/>
+    <geom pos="4.000 -0.450 0.30" type="box" size="4.500 0.050 0.30"/>
+    <geom pos="4.000 4.450 0.30" type="box" size="4.500 0.050 0.30"/>
+    <geom pos="-0.450 2.000 0.30" type="box" size="0.050 2.500 0.30"/>
+    <geom pos="8.450 2.000 0.30" type="box" size="0.050 2.500 0.30"/>
+    <geom pos="2.550 0.450 0.30" type="box" size="0.050 0.850 0.30"/>
+    <geom pos="3.850 1.350 0.30" type="box" size="1.350 0.050 0.30"/>
+    <geom pos="5.150 2.400 0.30" type="box" size="0.050 1.000 0.30"/>
+    <geom pos="4.050 3.350 0.30" type="box" size="1.050 0.050 0.30"/>
+    <geom pos="6.600 2.050 0.30" type="box" size="0.600 0.050 0.30"/>
+    <geom pos="0.75 0.425 0.030" type="box" size="0.350 0.775 0.030"/>
+    <geom pos="1.15 0.425 0.070" type="box" size="0.350 0.775 0.030"/>
+    <geom pos="1.85 0.425 0.075" type="box" size="0.32 0.775 0.025" quat="0.997 0 0.0707 0"/>
+  </worldbody>
+</mujoco>

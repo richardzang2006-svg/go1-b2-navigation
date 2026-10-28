@@ -173,6 +173,21 @@ ros2_ws/
 
 `src/` 中的 Unitree Go2、ANYmal 等目录是早期方案留下的参考代码，带 `COLCON_IGNORE`，不参与构建。
 
+## 10.5 Go2 地形导航扩展
+
+仓库新增 `go2_mujoco_locomotion/` 包，用同一套 ROS 2 / Nav2 接口展示 Go2
+在低台阶和斜坡地形上的运动能力。它与 Go1 平地工厂 demo 独立启动，不改变
+原有 `workshop_navigation` 的行为。
+
+```bash
+colcon build --packages-select go2_mujoco_locomotion
+ros2 launch go2_mujoco_locomotion go2_terrain.launch.py
+```
+
+包含 0.06 m/0.14 m 台阶、低斜坡、对应可通行地图和 45 维本体感受策略。
+详细说明见 [go2_mujoco_locomotion/README.md](go2_mujoco_locomotion/README.md)，
+验证记录见 [docs/evidence/go2_terrain_navigation.txt](docs/evidence/go2_terrain_navigation.txt)。
+
 ## 11. 已知限制
 
 - **只能在平地上行走**：行走策略只使用本体感受，没有地形感知，实测台阶高度超过约 1.5 cm 就无法通过。

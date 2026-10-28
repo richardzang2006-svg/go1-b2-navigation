@@ -1,0 +1,21 @@
+Go2 terrain navigation extension
+================================
+
+Package: go2_mujoco_locomotion
+Policy: model_9000 TorchScript (45-D proprioception + 10-frame history)
+World:  models/maze_steps.xml (flat approach + 0.06 m step + 0.14 m step + low ramp)
+Map:    maps/maze_steps.pgm
+
+Validation on the development machine (ROS 2 Humble, MuJoCo 3.15, CPU):
+- policy node at 50 Hz: command 0.2 m/s traverses the low-step maze from
+  x=0 to x~2.1 (stops at the far wall at x=2.5).
+- Nav2 goal (2.0, 0.4), DWB at 1.5 m/s: reached the goal and stopped with
+  odom stable at approximately (1.89, 0.36).
+- A control-loop bug was fixed during ROS integration: the policy must run
+  once per 20 ms (four 5 ms MuJoCo physics steps), not once per physics step.
+  Running it at 200 Hz caused the robot to stall at the first step.
+
+Known limitation:
+- The policy is still sensitive to the step edge; the obstacle/navigation
+  parameters in this package are a first validated setup, not a general
+  terrain-navigation solution.
